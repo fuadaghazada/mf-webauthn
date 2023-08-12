@@ -23,11 +23,65 @@ function LoginComponent() {
     const [username, setUsername] = useState(null);
     const [password, setPassword] = useState(null);
 
-    const onSubmit = () => {
-        if (username === "test" && password === "test123") {
-            window.localStorage.setItem("userId", "1");
-            window.location.reload();
+    const onSubmit = async () => {
+        if (username != null && password === null) {
+            await authPasskey();
+
+        } else if (username === "mock_user_name" && password === "test123") {
+            login();
         }
+    }
+
+    const authPasskey = async () => {
+        let publicKey = (await axios.post("http://localhost:80/public/v1/webauthn/passkeys/auth/start", {
+            username
+        })).data;
+
+        console.log(publicKey);
+
+        let credential = await window.navigator.credentials.get({
+            ...publicKey,
+            publicKey: {
+                ...publicKey.publicKey,
+                challenge: base64ToArrayBuffer(publicKey.publicKey.challenge),
+                allowCredentials: publicKey.publicKey.allowCredentials.map(ac =>
+                    ({
+                        ...ac,
+                        id: base64ToArrayBuffer(ac.id)
+                    })
+                )
+            }
+        });
+
+        console.log(credential);
+
+        const publicKeyCredential = {
+            type: credential.type,
+            id: credential.id,
+            rawId: arrayBufferToBase64(credential.rawId),
+            response: {
+                authenticatorData: arrayBufferToBase64(credential.response.authenticatorData),
+                clientDataJSON: arrayBufferToBase64(credential.response.clientDataJSON),
+                signature: arrayBufferToBase64(credential.response.signature),
+                userHandle: arrayBufferToBase64(credential.response.userHandle),
+            },
+        };
+
+        console.log(publicKeyCredential)
+
+        let accessToken = (await axios.post("http://localhost:80/public/v1/webauthn/passkeys/auth/finish", {
+            username,
+            credentials: publicKeyCredential
+        })).data;
+
+        console.log(accessToken)
+
+        login()
+    }
+
+    const login = () => {
+        window.localStorage.setItem("userId", "1");
+        window.location.reload();
     }
 
     return <div className="Main">
@@ -82,24 +136,6 @@ function HomePage() {
         })
     }
 
-    const arrayBufferToBase64 = (buffer) => {
-        const bytes = new Uint8Array(buffer);
-        const binary = bytes.reduce((acc, byte) => acc + String.fromCharCode(byte), "");
-        return btoa(binary);
-    }
-
-    const base64ToArrayBuffer = (base64UrlSafe) => {
-        const base64 = base64UrlSafe.replace(/-/g, '+').replace(/_/g, '/');
-
-        const binaryString = atob(base64);
-        const uint8Array = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-            uint8Array[i] = binaryString.charCodeAt(i);
-        }
-
-        return uint8Array;
-    }
-
     const logout = () => {
         window.localStorage.clear();
         window.location.reload();
@@ -111,6 +147,24 @@ function HomePage() {
         <br/>
         <button onClick={logout}>Logout</button>
     </div>
+}
+
+const arrayBufferToBase64 = (buffer) => {
+    const bytes = new Uint8Array(buffer);
+    const binary = bytes.reduce((acc, byte) => acc + String.fromCharCode(byte), "");
+    return btoa(binary);
+}
+
+const base64ToArrayBuffer = (base64UrlSafe) => {
+    const base64 = base64UrlSafe.replace(/-/g, '+').replace(/_/g, '/');
+
+    const binaryString = atob(base64);
+    const uint8Array = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+        uint8Array[i] = binaryString.charCodeAt(i);
+    }
+
+    return uint8Array;
 }
 
 export default App;
