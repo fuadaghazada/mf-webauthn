@@ -74,10 +74,7 @@ function LoginComponent() {
 
         let headers = {'DP-Session-ID': sessionId};
 
-        let accessToken = (await axios.post("http://localhost:8080/public/v1/passkeys/auth/finish", {
-            username,
-            credentials: publicKeyCredential
-        }, {headers})).data;
+        let accessToken = (await axios.post("http://localhost:8080/public/v1/passkeys/auth/finish", publicKeyCredential, {headers})).data;
 
         console.log(accessToken)
 
