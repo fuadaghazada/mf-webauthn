@@ -33,7 +33,7 @@ function LoginComponent() {
     }
 
     const authPasskey = async () => {
-        let publicKey = (await axios.get("http://localhost:8080/public/v1/passkeys/auth/begin", {
+        let publicKey = (await axios.post("http://localhost:8080/public/v1/passkeys/auth/begin", {
             username
         })).data;
 
