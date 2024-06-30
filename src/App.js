@@ -33,9 +33,12 @@ function LoginComponent() {
     }
 
     const authPasskey = async () => {
-        let publicKey = (await axios.post("http://localhost:8080/public/v1/passkeys/auth/begin", {
+        let resp = await axios.post("http://localhost:8080/public/v1/passkeys/auth/begin", {
             username
-        })).data;
+        });
+        let publicKey = resp.data;
+
+        let sessionId = resp.headers['dp-session-id']
 
         console.log(publicKey);
 
@@ -69,10 +72,12 @@ function LoginComponent() {
 
         console.log(publicKeyCredential)
 
+        let headers = {'DP-Session-ID': sessionId};
+
         let accessToken = (await axios.post("http://localhost:8080/public/v1/passkeys/auth/finish", {
             username,
             credentials: publicKeyCredential
-        })).data;
+        }, {headers})).data;
 
         console.log(accessToken)
 
