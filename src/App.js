@@ -33,7 +33,7 @@ function LoginComponent() {
     }
 
     const authPasskey = async () => {
-        let publicKey = (await axios.post("http://localhost:80/public/v1/webauthn/passkeys/auth/start", {
+        let publicKey = (await axios.get("http://localhost:8080/public/v1/passkeys/auth/begin", {
             username
         })).data;
 
@@ -69,7 +69,7 @@ function LoginComponent() {
 
         console.log(publicKeyCredential)
 
-        let accessToken = (await axios.post("http://localhost:80/public/v1/webauthn/passkeys/auth/finish", {
+        let accessToken = (await axios.post("http://localhost:8080/public/v1/passkeys/auth/finish", {
             username,
             credentials: publicKeyCredential
         })).data;
@@ -80,7 +80,7 @@ function LoginComponent() {
     }
 
     const login = () => {
-        window.localStorage.setItem("userId", "1");
+        window.localStorage.setItem("userId", "41");
         window.location.reload();
     }
 
@@ -97,10 +97,13 @@ function HomePage() {
     const registerPasskey = async () => {
         let userId = window.localStorage.getItem("userId");
         let headers = {"DP-User-ID": userId};
-        let challengeInfo = (await axios.post("http://localhost:80/v1/webauthn/passkeys/register/start", null, {
+        let resp = (await axios.get("http://localhost:8080/v1/passkeys/registration/begin", {
             headers
-        })).data;
+        }));
+        let challengeInfo = resp.data;
+        let sessionId = resp.headers['dp-session-id']
 
+        console.log("Session ID:", sessionId, resp.headers)
         console.log("Challenge response:", challengeInfo)
 
         let challenge = {
@@ -131,7 +134,8 @@ function HomePage() {
 
         console.log("Public key credentials payload:", publicKeyCredential)
 
-        await axios.post("http://localhost:80/v1/webauthn/passkeys/register/finish", publicKeyCredential, {
+        headers['DP-Session-ID'] = sessionId;
+        await axios.post("http://localhost:8080/v1/passkeys/registration/finish", publicKeyCredential, {
             headers
         })
     }
@@ -152,7 +156,7 @@ function HomePage() {
 const arrayBufferToBase64 = (buffer) => {
     const bytes = new Uint8Array(buffer);
     const binary = bytes.reduce((acc, byte) => acc + String.fromCharCode(byte), "");
-    return btoa(binary);
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_');;
 }
 
 const base64ToArrayBuffer = (base64UrlSafe) => {
